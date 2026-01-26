@@ -113,7 +113,11 @@ try:
                                 # Send data back to parent window
                                 st.components.v1.html(f"""
                                     <script>
+                                    console.log('Script running...');
+                                    console.log('window.opener exists?', !!window.opener);
+
                                     if (window.opener) {{
+                                        console.log('Sending message to parent...');
                                         window.opener.postMessage({{
                                             type: 'image_selected',
                                             image_id: '{img_data['image_id']}',
@@ -122,6 +126,9 @@ try:
                                         
                                         // Show success message
                                         alert('✅ Image selected! The fields in your task have been automatically filled. You can close this window now.');
+                                    }} else {{
+                                        console.log('No window.opener - opened in new tab instead of popup');
+                                        alert('✅ Image selected! Please copy the ID and URL below and paste into your task.');
                                     }}
                                     </script>
                                 """, height=0)

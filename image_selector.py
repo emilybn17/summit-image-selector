@@ -110,6 +110,22 @@ try:
                                 st.session_state['selected_image_id'] = img_data['image_id']
                                 st.session_state['selected_image_url'] = img_data['image_url']
                                 
+                                # Send data back to parent window
+                                st.components.v1.html(f"""
+                                    <script>
+                                    if (window.opener) {{
+                                        window.opener.postMessage({{
+                                            type: 'image_selected',
+                                            image_id: '{img_data['image_id']}',
+                                            image_url: '{img_data['image_url']}'
+                                        }}, '*');
+                                        
+                                        // Show success message
+                                        alert('✅ Image selected! The fields in your task have been automatically filled. You can close this window now.');
+                                    }}
+                                    </script>
+                                """, height=0)
+                                
                                 st.balloons()
                                 
                             else:

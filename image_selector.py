@@ -12,9 +12,10 @@ st.set_page_config(page_title="Image Selector", layout="wide")
 def get_sheet_connection():
     scope = ['https://spreadsheets.google.com/feeds', 
              'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+        st.secrets["gcp_service_account"], scope)
     client = gspread.authorize(creds)
-    return client.open_by_key('1deA1F3YS9yYaTnbcqz-Ap6dX1EWIBgoaMGMIaFLjD5E').sheet1
+    return client.open_by_key(st.secrets["sheet_id"]).sheet1
 
 # ========== FUNCTIONS ==========
 def get_available_images():

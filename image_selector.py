@@ -43,7 +43,7 @@ def claim_image(image_id, worker_euid, task_id, sheet_df):
     
     # Check if already claimed
     if sheet_df.loc[row_idx, 'in_use']:
-        return False, f"This image was already claimed by {sheet_df.loc[row_idx, 'claimed_by']}"
+        return False, f"This image has already been claimed."
     
     # Claim the image
     timestamp = datetime.now().isoformat()

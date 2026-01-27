@@ -105,6 +105,7 @@ try:
                         # Claim button
                         if st.button(f"Select This Image", key=f"claim_{img_data['image_id']}"):
                             success, message = claim_image(img_data['image_id'], worker_euid, task_id, full_df)
+                            
                             if success:
                                 st.success(message)
                                 
@@ -115,22 +116,21 @@ try:
                                 # Send data back to parent window
                                 st.components.v1.html(f"""
                                     <script>
-                                    console.log('Script running...');
-                                    console.log('window.opener exists?', !!window.opener);
-
-                                    if (window.opener) {{
-                                        console.log('Sending message to parent...');
+                                    if (window.parent && window.parent !== window) {{
+                                        window.parent.postMessage({{
+                                            type: 'image_selected',
+                                            image_id: '{img_data['image_id']}',
+                                            image_url: '{img_data['image_url']}'
+                                        }}, '*');
+                                    }} else if (window.opener) {{
                                         window.opener.postMessage({{
                                             type: 'image_selected',
                                             image_id: '{img_data['image_id']}',
                                             image_url: '{img_data['image_url']}'
                                         }}, '*');
-                                        
-                                        // Show success message
-                                        alert('✅ Image selected! The fields in your task have been automatically filled. You can close this window now.');
+                                        alert('✅ Image selected! Your fields should auto-fill. If not:\\n\\nImage ID: {img_data['image_id']}\\nImage URL: {img_data['image_url']}');
                                     }} else {{
-                                        console.log('No window.opener - opened in new tab instead of popup');
-                                        alert('✅ Image selected! Please copy the ID and URL below and paste into your task.');
+                                        alert('✅ Image selected!\\n\\nImage ID: {img_data['image_id']}\\n\\nImage URL: {img_data['image_url']}\\n\\nCopy these values and paste into your task.');
                                     }}
                                     </script>
                                 """, height=0)
@@ -138,9 +138,13 @@ try:
                                 st.balloons()
                                 
                             else:
+                                # Show error in popup
                                 st.error(message)
-                                st.write("Please refresh and try another image.")
-
+                                st.components.v1.html(f"""
+                                    <script>
+                                    alert('⚠️ ERROR\\n\\n{message.replace("'", "\\'")}\\n\\nPlease click the Refresh button and select a different image.');
+                                    </script>
+                                """, height=0)
 except Exception as e:
     st.error(f"Error loading images: {e}")
     st.write("Please make sure your Google Sheet is properly configured.")

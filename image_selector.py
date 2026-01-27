@@ -28,7 +28,7 @@ def get_available_images():
     available = df[(df['in_use'] == False) | (df['in_use'] == '') | (df['in_use'].isna())]
     return available, df
 
-def claim_image(image_id, task_id, sheet_df):
+def claim_image(image_id, task_id, project_id, sheet_df):
     """Claim an image for a worker"""
     sheet = get_sheet_connection()
     
@@ -51,17 +51,22 @@ def claim_image(image_id, task_id, sheet_df):
     sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('in_use') + 1, True)
     sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('claimed_at') + 1, timestamp)
     sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('task_id') + 1, task_id)
+    sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('project_id') + 1, project_id)
     
     return True, "Image claimed successfully!"
 
 # ========== MAIN APP ==========
 st.title("🖼️ Image Selector")
 
-# Get task_id from URL parameters
+# Get task_id and project_id from URL parameters
 params = st.query_params
 task_id = params.get("task_id", "UNKNOWN")
+project_id = params.get("project_id", "UNKNOWN")
+
 
 st.write(f"Task ID: `{task_id}`")
+st.write(f"Project ID: `{project_id}`")
+
 
 # Add refresh button
 if st.button("🔄 Refresh Available Images"):
@@ -102,7 +107,7 @@ try:
                         
                         # Claim button
                         if st.button(f"Select This Image", key=f"claim_{img_data['image_id']}"):
-                            success, message = claim_image(img_data['image_id'], task_id, full_df)
+                            success, message = claim_image(img_data['image_id'], task_id, project_id, full_df)
                             
                             if success:
                                 st.success(message)

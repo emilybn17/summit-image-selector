@@ -111,9 +111,13 @@ try:
                                 st.session_state['selected_image_id'] = img_data['image_id']
                                 st.session_state['selected_image_url'] = img_data['image_url']
                                 
-                                # Send data back to parent window
+                                # Show alert with ID and URL
                                 st.components.v1.html(f"""
                                     <script>
+                                    // Show alert immediately
+                                    alert('✅ Image selected!\\n\\nImage ID: {img_data['image_id']}\\n\\nImage URL: {img_data['image_url']}\\n\\nCopy these values and paste them into your Surge task before closing this window.');
+                                    
+                                    // Then try to send to parent window
                                     if (window.parent && window.parent !== window) {{
                                         window.parent.postMessage({{
                                             type: 'image_selected',
@@ -126,9 +130,6 @@ try:
                                             image_id: '{img_data['image_id']}',
                                             image_url: '{img_data['image_url']}'
                                         }}, '*');
-                                        alert('✅ Image selected! Your fields should auto-fill. If not:\\n\\nImage ID: {img_data['image_id']}\\nImage URL: {img_data['image_url']}');
-                                    }} else {{
-                                        alert('✅ Image selected!\\n\\nImage ID: {img_data['image_id']}\\n\\nImage URL: {img_data['image_url']}\\n\\nCopy these values and paste into your task.');
                                     }}
                                     </script>
                                 """, height=0)

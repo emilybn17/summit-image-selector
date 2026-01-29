@@ -7,6 +7,24 @@ from datetime import datetime
 # Page config
 st.set_page_config(page_title="Image Selector", layout="wide")
 
+# Custom CSS to change multiselect colors
+st.markdown("""
+    <style>
+    /* Change multiselect tag colors */
+    .stMultiSelect [data-baseweb="tag"] {
+        background-color: #5C7A99 !important;
+    }
+    
+    .stMultiSelect [data-baseweb="tag"] span {
+        color: white !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+# Page config
+st.set_page_config(page_title="Image Selector", layout="wide")
+
 # ========== GOOGLE SHEETS CONNECTION ==========
 @st.cache_resource
 def get_sheet_connection():

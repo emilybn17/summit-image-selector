@@ -63,28 +63,102 @@ params = st.query_params
 task_id = params.get("task_id", "UNKNOWN")
 project_id = params.get("project_id", "UNKNOWN")
 
-
 st.write(f"Task ID: `{task_id}`")
 st.write(f"Project ID: `{project_id}`")
 
-
-# Add refresh button
-if st.button("🔄 Refresh Available Images"):
-    st.cache_resource.clear()
-    st.rerun()
-
-# Load images
+# ========== LOAD DATA AND SETUP FILTERS ==========
 try:
     available_df, full_df = get_available_images()
     
-    st.write(f"**{len(available_df)}** images available out of **{len(full_df)}** total")
+    # ========== FILTERS ==========
+    st.subheader("Filters")
     
-    if len(available_df) == 0:
-        st.warning("No images currently available. Please check back later or refresh.")
+    col1, col2, col3 = st.columns([2, 2, 1])
+    
+    with col1:
+        # Get unique domains from sheet - split comma-separated values
+        all_domains = []
+        for domain_str in full_df['domain'].dropna():
+            if domain_str != '':
+                domains = [d.strip() for d in str(domain_str).split(',')]
+                all_domains.extend(domains)
+        unique_domains = sorted(list(set(all_domains)))
+        
+        selected_domains = st.multiselect(
+            "Domains:", 
+            unique_domains, 
+            default=None, 
+            placeholder="Select domains (or leave blank for all)"
+        )
+    
+    with col2:
+        # Get unique image types from sheet - split comma-separated values
+        all_types = []
+        for type_str in full_df['image_type'].dropna():
+            if type_str != '':
+                types = [t.strip() for t in str(type_str).split(',')]
+                all_types.extend(types)
+        unique_types = sorted(list(set(all_types)))
+        
+        selected_types = st.multiselect(
+            "Image Types:", 
+            unique_types, 
+            default=None, 
+            placeholder="Select types (or leave blank for all)"
+        )
+    
+    with col3:
+        st.write("")  # Spacer
+        st.write("")  # Spacer
+        if st.button("🔄 Refresh"):
+            st.cache_resource.clear()
+            st.rerun()
+    
+    # ========== APPLY FILTERS ==========
+    filtered_df = available_df.copy()
+    
+    # Filter by domain (if any selected) - support comma-separated values
+    if selected_domains and len(selected_domains) > 0:
+        def has_any_domain(domain_str):
+            if pd.isna(domain_str) or domain_str == '':
+                return False
+            # Split by comma and strip whitespace
+            domains = [d.strip() for d in str(domain_str).split(',')]
+            # Check if any selected domain is in this image's domains
+            return any(selected_domain in domains for selected_domain in selected_domains)
+        
+        filtered_df = filtered_df[filtered_df['domain'].apply(has_any_domain)]
+    
+    # Filter by image type (if any selected) - support comma-separated values
+    if selected_types and len(selected_types) > 0:
+        def has_any_type(type_str):
+            if pd.isna(type_str) or type_str == '':
+                return False
+            # Split by comma and strip whitespace
+            types = [t.strip() for t in str(type_str).split(',')]
+            # Check if any selected type is in this image's types
+            return any(selected_type in types for selected_type in selected_types)
+        
+        filtered_df = filtered_df[filtered_df['image_type'].apply(has_any_type)]
+    
+    # Show filter summary
+    filter_summary = []
+    if selected_domains:
+        filter_summary.append(f"Domains: {', '.join(selected_domains)}")
+    if selected_types:
+        filter_summary.append(f"Types: {', '.join(selected_types)}")
+    
+    if filter_summary:
+        st.info("🔍 Active filters: " + " | ".join(filter_summary))
+    
+    st.write(f"**{len(filtered_df)}** images match your filters (out of {len(available_df)} available, {len(full_df)} total)")
+    
+    if len(filtered_df) == 0:
+        st.warning("No images match your filters. Try different filter options or refresh.")
     else:
         # Display images in a grid
         cols_per_row = 3
-        rows = (len(available_df) + cols_per_row - 1) // cols_per_row
+        rows = (len(filtered_df) + cols_per_row - 1) // cols_per_row
         
         for row in range(rows):
             cols = st.columns(cols_per_row)
@@ -92,9 +166,9 @@ try:
             for col_idx in range(cols_per_row):
                 img_idx = row * cols_per_row + col_idx
                 
-                if img_idx < len(available_df):
+                if img_idx < len(filtered_df):
                     with cols[col_idx]:
-                        img_data = available_df.iloc[img_idx]
+                        img_data = filtered_df.iloc[img_idx]
                         
                         # Display image
                         try:
@@ -104,6 +178,16 @@ try:
                         
                         # Display image info
                         st.write(f"**ID:** `{img_data['image_id']}`")
+                        
+                        # Show domain and type if available
+                        metadata_parts = []
+                        if pd.notna(img_data.get('domain')) and img_data.get('domain') != '':
+                            metadata_parts.append(f"📁 {img_data['domain']}")
+                        if pd.notna(img_data.get('image_type')) and img_data.get('image_type') != '':
+                            metadata_parts.append(f"🏷️ {img_data['image_type']}")
+                        
+                        if metadata_parts:
+                            st.caption(" | ".join(metadata_parts))
                         
                         # Claim button
                         if st.button(f"Select This Image", key=f"claim_{img_data['image_id']}"):
@@ -120,7 +204,7 @@ try:
                                 st.components.v1.html(f"""
                                     <script>
                                     // Show alert immediately
-                                    alert('✅ Image selected!\\n\\nImage ID: {img_data['image_id']}\\n\\nImage URL: {img_data['image_url']}\\n\\nCopy these values and paste them into your Surge task before closing this window.');
+                                    alert('✅ Image selected!\\n\\nImage ID: {img_data['image_id']}\\n\\nImage URL: {img_data['image_url']}\\n\\nCopy these values and paste them into your task before closing this window.');
                                     
                                     // Then try to send to parent window
                                     if (window.parent && window.parent !== window) {{
@@ -149,6 +233,7 @@ try:
                                     alert('⚠️ ERROR\\n\\n{message.replace("'", "\\'")}\\n\\nPlease click the Refresh button and select a different image.');
                                     </script>
                                 """, height=0)
+
 except Exception as e:
     st.error(f"Error loading images: {e}")
     st.write("Please make sure your Google Sheet is properly configured.")

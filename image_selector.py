@@ -8,6 +8,7 @@ from datetime import datetime
 st.set_page_config(page_title="Image Selector", layout="wide")
 
 # Custom CSS to change multiselect colors
+# Custom CSS
 st.markdown("""
     <style>
     /* Change multiselect tag colors */
@@ -17,6 +18,16 @@ st.markdown("""
     
     .stMultiSelect [data-baseweb="tag"] span {
         color: white !important;
+    }
+    
+    /* Make confirmation button green */
+    div[data-testid="column"]:first-child button {
+        background-color: #4CAF50 !important;
+        color: white !important;
+    }
+    
+    div[data-testid="column"]:first-child button:hover {
+        background-color: #45a049 !important;
     }
     
     /* Enlarge preview image on confirmation page */
@@ -130,7 +141,7 @@ if st.session_state['preview_image'] is not None and not st.session_state['image
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("✅ Yes, Confirm This Image", type="primary", use_container_width=True):
+        if st.button("✅ Yes, Confirm This Image", use_container_width=True):
             # Claim the image
             _, full_df = get_available_images()
             success, message = claim_image(img_data['image_id'], task_id, project_id, full_df)

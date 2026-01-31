@@ -141,34 +141,36 @@ if st.session_state['preview_image'] is not None and not st.session_state['image
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("✅ Yes, Confirm This Image", use_container_width=True):
-            # Claim the image
-            _, full_df = get_available_images()
-            success, message = claim_image(img_data['image_id'], task_id, project_id, full_df)
-            
-            if success:
-                st.session_state['image_confirmed'] = True
-                st.rerun()
-            else:
-                # Image was claimed by someone else
-                st.error(message)
-                st.components.v1.html(f"""
-                    <script>
-                    alert('⚠️ ERROR\\n\\n{message.replace("'", "\\'")}');
-                    </script>
-                """, height=0)
-                # Reset and go back to browse
-                st.session_state['preview_image'] = None
-                st.session_state['image_confirmed'] = False
-                if st.button("← Back to Browse"):
-                    st.rerun()
+        # Get unique domains from sheet - split by / separator
+        all_domains = []
+        for domain_str in full_df['domain'].dropna():
+            if domain_str != '':
+                domains = [d.strip() for d in str(domain_str).split('/')]
+                all_domains.extend(domains)
+        unique_domains = sorted(list(set(all_domains)))
+        
+        selected_domains = st.multiselect(
+            "Domains:", 
+            unique_domains, 
+            default=None, 
+            placeholder="Select domains (or leave blank for all)"
+        )
     
     with col2:
-        if st.button("❌ Cancel - Choose Different Image", use_container_width=True):
-            # Go back to browsing
-            st.session_state['preview_image'] = None
-            st.session_state['image_confirmed'] = False
-            st.rerun()
+        # Get unique image types from sheet - split by / separator
+        all_types = []
+        for type_str in full_df['image_type'].dropna():
+            if type_str != '':
+                types = [t.strip() for t in str(type_str).split('/')]
+                all_types.extend(types)
+        unique_types = sorted(list(set(all_types)))
+        
+        selected_types = st.multiselect(
+            "Image Types:", 
+            unique_types, 
+            default=None, 
+            placeholder="Select types (or leave blank for all)"
+        )
 
 # ========== FINAL CONFIRMATION PAGE (image claimed successfully) ==========
 elif st.session_state['image_confirmed'] and st.session_state['preview_image'] is not None:
@@ -324,25 +326,25 @@ else:
         # ========== APPLY FILTERS ==========
         filtered_df = available_df.copy()
         
-        # Filter by domain (if any selected) - support comma-separated values
+        # Filter by domain (if any selected) - support / separated values
         if selected_domains and len(selected_domains) > 0:
             def has_any_domain(domain_str):
                 if pd.isna(domain_str) or domain_str == '':
                     return False
-                # Split by comma and strip whitespace
-                domains = [d.strip() for d in str(domain_str).split(',')]
+                # Split by / and strip whitespace
+                domains = [d.strip() for d in str(domain_str).split('/')]
                 # Check if any selected domain is in this image's domains
                 return any(selected_domain in domains for selected_domain in selected_domains)
             
             filtered_df = filtered_df[filtered_df['domain'].apply(has_any_domain)]
         
-        # Filter by image type (if any selected) - support comma-separated values
+        # Filter by image type (if any selected) - support / separated values
         if selected_types and len(selected_types) > 0:
             def has_any_type(type_str):
                 if pd.isna(type_str) or type_str == '':
                     return False
-                # Split by comma and strip whitespace
-                types = [t.strip() for t in str(type_str).split(',')]
+                # Split by / and strip whitespace
+                types = [t.strip() for t in str(type_str).split('/')]
                 # Check if any selected type is in this image's types
                 return any(selected_type in types for selected_type in selected_types)
             

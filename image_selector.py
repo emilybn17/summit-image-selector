@@ -403,7 +403,7 @@ else:
                                 # Store image for preview
                                 st.session_state['preview_image'] = img_data.to_dict()
                                 st.rerun()
-
+    
     except Exception as e:
         st.error(f"Error loading images: {e}")
         st.write("Please make sure your Google Sheet is properly configured.")

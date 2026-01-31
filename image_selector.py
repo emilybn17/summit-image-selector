@@ -273,8 +273,8 @@ elif st.session_state['image_confirmed'] and st.session_state['preview_image'] i
 
 # ========== BROWSE/FILTER PAGE (default view) ==========
 else:
-    # ========== LOAD DATA AND SETUP FILTERS ==========
     try:
+        # Load data first
         available_df, full_df = get_available_images()
         
         # ========== FILTERS ==========
@@ -283,11 +283,11 @@ else:
         col1, col2, col3 = st.columns([2, 2, 1])
         
         with col1:
-            # Get unique domains from sheet - split comma-separated values
+            # Get unique domains from sheet - split by / separator
             all_domains = []
             for domain_str in full_df['domain'].dropna():
                 if domain_str != '':
-                    domains = [d.strip() for d in str(domain_str).split(',')]
+                    domains = [d.strip() for d in str(domain_str).split('/')]
                     all_domains.extend(domains)
             unique_domains = sorted(list(set(all_domains)))
             
@@ -299,11 +299,11 @@ else:
             )
         
         with col2:
-            # Get unique image types from sheet - split comma-separated values
+            # Get unique image types from sheet - split by / separator
             all_types = []
             for type_str in full_df['image_type'].dropna():
                 if type_str != '':
-                    types = [t.strip() for t in str(type_str).split(',')]
+                    types = [t.strip() for t in str(type_str).split('/')]
                     all_types.extend(types)
             unique_types = sorted(list(set(all_types)))
             

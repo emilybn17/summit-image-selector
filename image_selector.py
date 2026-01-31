@@ -7,7 +7,6 @@ from datetime import datetime
 # Page config
 st.set_page_config(page_title="Image Selector", layout="wide")
 
-# Custom CSS to change multiselect colors
 # Custom CSS
 st.markdown("""
     <style>
@@ -141,36 +140,37 @@ if st.session_state['preview_image'] is not None and not st.session_state['image
     col1, col2 = st.columns(2)
     
     with col1:
-        # Get unique domains from sheet - split by / separator
-        all_domains = []
-        for domain_str in full_df['domain'].dropna():
-            if domain_str != '':
-                domains = [d.strip() for d in str(domain_str).split('/')]
-                all_domains.extend(domains)
-        unique_domains = sorted(list(set(all_domains)))
-        
-        selected_domains = st.multiselect(
-            "Domains:", 
-            unique_domains, 
-            default=None, 
-            placeholder="Select domains (or leave blank for all)"
-        )
+        if st.button("✅ Yes, Confirm This Image", use_container_width=True):
+            # Reload data to check current status
+            try:
+                _, full_df = get_available_images()
+                success, message = claim_image(img_data['image_id'], task_id, project_id, full_df)
+                
+                if success:
+                    st.session_state['image_confirmed'] = True
+                    st.rerun()
+                else:
+                    # Image was claimed by someone else
+                    st.error(message)
+                    st.components.v1.html(f"""
+                        <script>
+                        alert('⚠️ ERROR\\n\\n{message.replace("'", "\\'")}');
+                        </script>
+                    """, height=0)
+                    # Reset and go back to browse
+                    st.session_state['preview_image'] = None
+                    st.session_state['image_confirmed'] = False
+                    if st.button("← Back to Browse"):
+                        st.rerun()
+            except Exception as e:
+                st.error(f"Error claiming image: {e}")
     
     with col2:
-        # Get unique image types from sheet - split by / separator
-        all_types = []
-        for type_str in full_df['image_type'].dropna():
-            if type_str != '':
-                types = [t.strip() for t in str(type_str).split('/')]
-                all_types.extend(types)
-        unique_types = sorted(list(set(all_types)))
-        
-        selected_types = st.multiselect(
-            "Image Types:", 
-            unique_types, 
-            default=None, 
-            placeholder="Select types (or leave blank for all)"
-        )
+        if st.button("❌ Cancel - Choose Different Image", use_container_width=True):
+            # Go back to browsing
+            st.session_state['preview_image'] = None
+            st.session_state['image_confirmed'] = False
+            st.rerun()
 
 # ========== FINAL CONFIRMATION PAGE (image claimed successfully) ==========
 elif st.session_state['image_confirmed'] and st.session_state['preview_image'] is not None:
@@ -224,6 +224,9 @@ elif st.session_state['image_confirmed'] and st.session_state['preview_image'] i
         elif '.gif' in url_lower:
             mime_type = 'image/gif'
             file_ext = 'gif'
+        elif '.webp' in url_lower:
+            mime_type = 'image/webp'
+            file_ext = 'webp'
         else:
             mime_type = 'image/jpeg'
             file_ext = 'jpg'
@@ -398,7 +401,7 @@ else:
                             if metadata_parts:
                                 st.caption(" | ".join(metadata_parts))
                             
-                            # Preview button (not claim yet!)
+                            # Preview button
                             if st.button(f"👁️ Preview", key=f"preview_{img_data['image_id']}"):
                                 # Store image for preview
                                 st.session_state['preview_image'] = img_data.to_dict()
@@ -407,3 +410,4 @@ else:
     except Exception as e:
         st.error(f"Error loading images: {e}")
         st.write("Please make sure your Google Sheet is properly configured.")
+        st.write(f"Error details: {str(e)}")

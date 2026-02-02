@@ -191,16 +191,11 @@ elif st.session_state['image_confirmed'] and st.session_state['preview_image'] i
     st.divider()
     
     # Show copyable values
-    st.subheader("📋 Copy These Values to Your Task")
+    st.subheader("📋 Copy the Direct Image URL to Your Task")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("**Image ID:**")
-        st.code(img_data['image_id'], language=None)
-    
-    with col2:
-        st.write("**Image URL:**")
-        st.code(img_data['image_url'], language=None)
+    st.write("**Image URL:**")
+    st.code(st.session_state['selected_image_url'], language=None)
+
     
     # Download info
     st.divider()

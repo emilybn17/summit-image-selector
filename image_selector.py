@@ -148,6 +148,7 @@ if st.session_state['preview_image'] is not None and not st.session_state['image
                 
                 if success:
                     st.session_state['image_confirmed'] = True
+                    st.session_state['selected_image_url'] = img_data['image_url']
                     st.rerun()
                 else:
                     # Image was claimed by someone else
@@ -167,7 +168,7 @@ if st.session_state['preview_image'] is not None and not st.session_state['image
     
     with col2:
         if st.button("❌ Cancel - Choose Different Image", use_container_width=True):
-            # Go back to browsing
+            # Go back to browsing (filters preserved)
             st.session_state['preview_image'] = None
             st.session_state['image_confirmed'] = False
             st.rerun()
@@ -190,23 +191,22 @@ elif st.session_state['image_confirmed'] and st.session_state['preview_image'] i
     
     st.divider()
     
-    # Show copyable values
-    st.subheader("📋 Copy the Direct Image URL to Your Task")
+    # Show copyable value
+    st.subheader("📋 Copy This URL to Your Task")
     
     st.write("**Image URL:**")
-    st.code(st.session_state['selected_image_url'], language=None)
-
+    st.code(img_data['image_url'], language=None)
     
     # Download info
     st.divider()
     st.info("💡 **To download:** Right-click the image above and select 'Save Image As...'")
     
-    # Show alert with values
+    # Show alert with URL
     st.components.v1.html(f"""
         <script>
         // Show alert immediately on page load
         if (!window.alertShown) {{
-            alert('✅ Image selected!\\n\\nImage ID: {img_data['image_id']}\\n\\nImage URL: {img_data['image_url']}\\n\\nCopy these values and paste them into your task before closing this window.');
+            alert('✅ Image selected!\\n\\nImage URL: {img_data['image_url']}\\n\\nCopy this URL and paste it into your task before closing this window.');
             window.alertShown = true;
         }}
         
@@ -214,13 +214,11 @@ elif st.session_state['image_confirmed'] and st.session_state['preview_image'] i
         if (window.parent && window.parent !== window) {{
             window.parent.postMessage({{
                 type: 'image_selected',
-                image_id: '{img_data['image_id']}',
                 image_url: '{img_data['image_url']}'
             }}, '*');
         }} else if (window.opener) {{
             window.opener.postMessage({{
                 type: 'image_selected',
-                image_id: '{img_data['image_id']}',
                 image_url: '{img_data['image_url']}'
             }}, '*');
         }}
@@ -253,12 +251,20 @@ else:
                     all_domains.extend(domains)
             unique_domains = sorted(list(set(all_domains)))
             
+            # Use session state to preserve selection
+            if 'selected_domains' not in st.session_state:
+                st.session_state['selected_domains'] = []
+            
             selected_domains = st.multiselect(
                 "Domains:", 
                 unique_domains, 
-                default=None, 
-                placeholder="Select domains (or leave blank for all)"
+                default=st.session_state['selected_domains'],
+                placeholder="Select domains (or leave blank for all)",
+                key='domain_filter'
             )
+            
+            # Update session state
+            st.session_state['selected_domains'] = selected_domains
         
         with col2:
             # Get unique image types from sheet - split by / separator
@@ -269,12 +275,20 @@ else:
                     all_types.extend(types)
             unique_types = sorted(list(set(all_types)))
             
+            # Use session state to preserve selection
+            if 'selected_types' not in st.session_state:
+                st.session_state['selected_types'] = []
+            
             selected_types = st.multiselect(
                 "Image Types:", 
                 unique_types, 
-                default=None, 
-                placeholder="Select types (or leave blank for all)"
+                default=st.session_state['selected_types'],
+                placeholder="Select types (or leave blank for all)",
+                key='type_filter'
             )
+            
+            # Update session state
+            st.session_state['selected_types'] = selected_types
         
         with col3:
             st.write("")  # Spacer
@@ -283,6 +297,7 @@ else:
                 st.cache_resource.clear()
                 st.session_state['preview_image'] = None
                 st.session_state['image_confirmed'] = False
+                # Filters will be preserved automatically
                 st.rerun()
         
         # ========== APPLY FILTERS ==========

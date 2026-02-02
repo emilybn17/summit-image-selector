@@ -273,31 +273,31 @@ else:
             st.session_state['selected_domains'] = selected_domains
         
         with col2:
-        # Get unique image types from sheet - split by | separator
-        all_types = []
-        for type_str in full_df['image_type'].dropna():
-            if type_str != '':
-                # Split by | to get individual types
-                types = [t.strip() for t in str(type_str).split('|')]
-                all_types.extend(types)
-        
-        # Remove duplicates and sort
-        unique_types = sorted(list(set(all_types)))
-        
-        # Use session state to preserve selection
-        if 'selected_types' not in st.session_state:
-            st.session_state['selected_types'] = []
-        
-        selected_types = st.multiselect(
-            "Image Types:", 
-            unique_types, 
-            default=st.session_state['selected_types'],
-            placeholder="Select types (or leave blank for all)",
-            key='type_filter'
-        )
-        
-        # Update session state
-        st.session_state['selected_types'] = selected_types
+            # Get unique image types from sheet - split by | separator
+            all_types = []
+            for type_str in full_df['image_type'].dropna():
+                if type_str != '':
+                    # Split by | to get individual types
+                    types = [t.strip() for t in str(type_str).split('|')]
+                    all_types.extend(types)
+            
+            # Remove duplicates and sort
+            unique_types = sorted(list(set(all_types)))
+            
+            # Use session state to preserve selection
+            if 'selected_types' not in st.session_state:
+                st.session_state['selected_types'] = []
+            
+            selected_types = st.multiselect(
+                "Image Types:", 
+                unique_types, 
+                default=st.session_state['selected_types'],
+                placeholder="Select types (or leave blank for all)",
+                key='type_filter'
+            )
+            
+            # Update session state
+            st.session_state['selected_types'] = selected_types
         
         with col3:
             st.write("")  # Spacer
@@ -312,25 +312,35 @@ else:
         # ========== APPLY FILTERS ==========
         filtered_df = available_df.copy()
         
-        # Filter by domain (if any selected) - support / separated values
+        # Filter by domain (if any selected) - support | and / separated values
         if selected_domains and len(selected_domains) > 0:
             def has_any_domain(domain_str):
                 if pd.isna(domain_str) or domain_str == '':
                     return False
-                # Split by / and strip whitespace
-                domains = [d.strip() for d in str(domain_str).split('/')]
-                # Check if any selected domain is in this image's domains
-                return any(selected_domain in domains for selected_domain in selected_domains)
+                
+                # Split by | to get each category path
+                categories = [c.strip() for c in str(domain_str).split('|')]
+                
+                for category in categories:
+                    # Split by / to get hierarchy parts
+                    parts = [p.strip() for p in category.split('/')]
+                    # Check if any selected domain matches any part
+                    if any(selected_domain in parts for selected_domain in selected_domains):
+                        return True
+                
+                return False
             
             filtered_df = filtered_df[filtered_df['domain'].apply(has_any_domain)]
         
-        # Filter by image type (if any selected) - support / separated values
+        # Filter by image type (if any selected) - support | separated values
         if selected_types and len(selected_types) > 0:
             def has_any_type(type_str):
                 if pd.isna(type_str) or type_str == '':
                     return False
-                # Split by / and strip whitespace
-                types = [t.strip() for t in str(type_str).split('/')]
+                
+                # Split by | and strip whitespace
+                types = [t.strip() for t in str(type_str).split('|')]
+                
                 # Check if any selected type is in this image's types
                 return any(selected_type in types for selected_type in selected_types)
             

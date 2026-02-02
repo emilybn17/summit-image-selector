@@ -243,12 +243,18 @@ else:
         col1, col2, col3 = st.columns([2, 2, 1])
         
         with col1:
-            # Get unique domains from sheet - split by / separator
+            # Get unique domains from sheet - split by | and / separators
             all_domains = []
             for domain_str in full_df['domain'].dropna():
                 if domain_str != '':
-                    domains = [d.strip() for d in str(domain_str).split('/')]
-                    all_domains.extend(domains)
+                    # First split by | to get each category path
+                    categories = [c.strip() for c in str(domain_str).split('|')]
+                    for category in categories:
+                        # Split by / to get individual hierarchy parts
+                        parts = [p.strip() for p in category.split('/')]
+                        all_domains.extend(parts)
+            
+            # Remove duplicates and sort
             unique_domains = sorted(list(set(all_domains)))
             
             # Use session state to preserve selection
@@ -267,28 +273,31 @@ else:
             st.session_state['selected_domains'] = selected_domains
         
         with col2:
-            # Get unique image types from sheet - split by / separator
-            all_types = []
-            for type_str in full_df['image_type'].dropna():
-                if type_str != '':
-                    types = [t.strip() for t in str(type_str).split('/')]
-                    all_types.extend(types)
-            unique_types = sorted(list(set(all_types)))
-            
-            # Use session state to preserve selection
-            if 'selected_types' not in st.session_state:
-                st.session_state['selected_types'] = []
-            
-            selected_types = st.multiselect(
-                "Image Types:", 
-                unique_types, 
-                default=st.session_state['selected_types'],
-                placeholder="Select types (or leave blank for all)",
-                key='type_filter'
-            )
-            
-            # Update session state
-            st.session_state['selected_types'] = selected_types
+        # Get unique image types from sheet - split by | separator
+        all_types = []
+        for type_str in full_df['image_type'].dropna():
+            if type_str != '':
+                # Split by | to get individual types
+                types = [t.strip() for t in str(type_str).split('|')]
+                all_types.extend(types)
+        
+        # Remove duplicates and sort
+        unique_types = sorted(list(set(all_types)))
+        
+        # Use session state to preserve selection
+        if 'selected_types' not in st.session_state:
+            st.session_state['selected_types'] = []
+        
+        selected_types = st.multiselect(
+            "Image Types:", 
+            unique_types, 
+            default=st.session_state['selected_types'],
+            placeholder="Select types (or leave blank for all)",
+            key='type_filter'
+        )
+        
+        # Update session state
+        st.session_state['selected_types'] = selected_types
         
         with col3:
             st.write("")  # Spacer

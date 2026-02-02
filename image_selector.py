@@ -202,45 +202,9 @@ elif st.session_state['image_confirmed'] and st.session_state['preview_image'] i
         st.write("**Image URL:**")
         st.code(img_data['image_url'], language=None)
     
-    # Download button
+    # Download info
     st.divider()
-    st.subheader("💾 Download Image")
-    
-    try:
-        import requests
-        from io import BytesIO
-        
-        response = requests.get(img_data['image_url'])
-        img_bytes = BytesIO(response.content)
-        
-        # Determine file extension from URL
-        url_lower = img_data['image_url'].lower()
-        if '.jpg' in url_lower or '.jpeg' in url_lower:
-            mime_type = 'image/jpeg'
-            file_ext = 'jpg'
-        elif '.png' in url_lower:
-            mime_type = 'image/png'
-            file_ext = 'png'
-        elif '.gif' in url_lower:
-            mime_type = 'image/gif'
-            file_ext = 'gif'
-        elif '.webp' in url_lower:
-            mime_type = 'image/webp'
-            file_ext = 'webp'
-        else:
-            mime_type = 'image/jpeg'
-            file_ext = 'jpg'
-        
-        st.download_button(
-            label="⬇️ Download Image",
-            data=img_bytes,
-            file_name=f"{img_data['image_id']}.{file_ext}",
-            mime=mime_type,
-            use_container_width=True
-        )
-    except Exception as e:
-        st.error(f"Could not create download button: {e}")
-        st.info("You can right-click the image above and select 'Save Image As...' to download.")
+    st.info("💡 **To download:** Right-click the image above and select 'Save Image As...'")
     
     # Show alert with values
     st.components.v1.html(f"""

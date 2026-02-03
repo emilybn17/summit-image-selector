@@ -289,7 +289,7 @@ elif st.session_state['image_confirmed'] and st.session_state['preview_image'] i
         <script>
         // Show alert immediately on page load
         if (!window.alertShown) {{
-            alert('✅ Image selected!\\n\\nImage URL: {img_data['image_url']}\\n\\nCopy this URL and paste it into your task before closing this window.');
+            alert('✅ Image selected!\\n\\nMake sure to copy the URL and paste it into your task before closing the main window.');
             window.alertShown = true;
         }}
         

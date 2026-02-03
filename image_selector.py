@@ -119,8 +119,9 @@ def mark_image_bad(image_id, task_id, project_id, sheet_df, reason):
     timestamp = datetime.now().isoformat()
     sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('in_use') + 1, 'BAD')
     sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('claimed_at') + 1, timestamp)
-    sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('task_id') + 1, f"{task_id} - REPORTED: {reason}")
+    sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('task_id') + 1, task_id)
     sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('project_id') + 1, project_id)
+    sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('report_reason') + 1, reason)
     
     return True, "Image marked as bad and removed from pool"
 

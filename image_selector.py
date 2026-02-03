@@ -29,6 +29,16 @@ st.markdown("""
         background-color: #45a049 !important;
     }
     
+    /* Make report bad button red/orange */
+    div[data-testid="column"]:nth-child(3) button {
+        background-color: #ff6b6b !important;
+        color: white !important;
+    }
+    
+    div[data-testid="column"]:nth-child(3) button:hover {
+        background-color: #ee5a52 !important;
+    }
+    
     /* Enlarge preview image on confirmation page */
     .enlarged-image img {
         max-width: 800px !important;
@@ -57,8 +67,11 @@ def get_available_images():
     records = sheet.get_all_records()
     df = pd.DataFrame(records)
     
-    # Filter for available images (in_use = False or blank)
-    available = df[(df['in_use'] == False) | (df['in_use'] == '') | (df['in_use'].isna())]
+    # Filter for available images (in_use = False or blank, and not marked as BAD)
+    available = df[
+        ((df['in_use'] == False) | (df['in_use'] == '') | (df['in_use'].isna())) &
+        ((df['in_use'] != 'BAD') & (df['in_use'] != 'bad'))
+    ]
     return available, df
 
 def claim_image(image_id, task_id, project_id, sheet_df):
@@ -75,7 +88,8 @@ def claim_image(image_id, task_id, project_id, sheet_df):
     sheet_row_num = row_idx + 2  # +2 for header and 1-indexing
     
     # Check if already claimed
-    if sheet_df.loc[row_idx, 'in_use']:
+    in_use_value = sheet_df.loc[row_idx, 'in_use']
+    if in_use_value == True or in_use_value == 'TRUE':
         claimed_at = sheet_df.loc[row_idx, 'claimed_at']
         return False, f"⚠️ IMAGE ALREADY CLAIMED\\n\\nThis image (ID: {image_id}) was already claimed at {claimed_at}.\\n\\nPlease click 'Refresh Available Images' and choose a different image."
     
@@ -87,6 +101,28 @@ def claim_image(image_id, task_id, project_id, sheet_df):
     sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('project_id') + 1, project_id)
     
     return True, "Image claimed successfully!"
+
+def mark_image_bad(image_id, task_id, project_id, sheet_df, reason):
+    """Mark an image as BAD"""
+    sheet = get_sheet_connection()
+    
+    # Find the row for this image
+    row_idx = sheet_df[sheet_df['image_id'] == image_id].index
+    
+    if len(row_idx) == 0:
+        return False, "Image not found in database"
+    
+    row_idx = row_idx[0]
+    sheet_row_num = row_idx + 2  # +2 for header and 1-indexing
+    
+    # Mark as BAD
+    timestamp = datetime.now().isoformat()
+    sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('in_use') + 1, 'BAD')
+    sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('claimed_at') + 1, timestamp)
+    sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('task_id') + 1, f"{task_id} - REPORTED: {reason}")
+    sheet.update_cell(sheet_row_num, sheet_df.columns.get_loc('project_id') + 1, project_id)
+    
+    return True, "Image marked as bad and removed from pool"
 
 # ========== MAIN APP ==========
 st.title("🖼️ Image Selector")
@@ -104,6 +140,8 @@ if 'preview_image' not in st.session_state:
     st.session_state['preview_image'] = None
 if 'image_confirmed' not in st.session_state:
     st.session_state['image_confirmed'] = False
+if 'show_report_bad' not in st.session_state:
+    st.session_state['show_report_bad'] = False
 
 # ========== CONFIRMATION PAGE (if image selected but not confirmed) ==========
 if st.session_state['preview_image'] is not None and not st.session_state['image_confirmed']:
@@ -134,44 +172,88 @@ if st.session_state['preview_image'] is not None and not st.session_state['image
     
     st.divider()
     
-    st.subheader("Are you sure you want to use this image?")
-    st.warning("⚠️ Once confirmed, this image will be reserved for your task and removed from the available pool.")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("✅ Yes, Confirm This Image", use_container_width=True):
-            # Reload data to check current status
-            try:
-                _, full_df = get_available_images()
-                success, message = claim_image(img_data['image_id'], task_id, project_id, full_df)
-                
-                if success:
-                    st.session_state['image_confirmed'] = True
-                    st.session_state['selected_image_url'] = img_data['image_url']
-                    st.rerun()
+    # Show report bad form if requested
+    if st.session_state['show_report_bad']:
+        st.subheader("🚨 Report Bad Image")
+        
+        reason = st.text_area(
+            "Why is this image inappropriate?",
+            placeholder="e.g., broken link, inappropriate content, wrong category, poor quality, etc.",
+            height=100
+        )
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("Submit Report", type="primary", use_container_width=True):
+                if reason and len(reason.strip()) > 0:
+                    _, full_df = get_available_images()
+                    success, message = mark_image_bad(img_data['image_id'], task_id, project_id, full_df, reason.strip())
+                    
+                    if success:
+                        st.success(message)
+                        st.info("Thank you for reporting this image. It has been removed from the available pool.")
+                        # Reset and go back to browse
+                        st.session_state['preview_image'] = None
+                        st.session_state['image_confirmed'] = False
+                        st.session_state['show_report_bad'] = False
+                        if st.button("← Back to Browse"):
+                            st.rerun()
+                    else:
+                        st.error(message)
                 else:
-                    # Image was claimed by someone else
-                    st.error(message)
-                    st.components.v1.html(f"""
-                        <script>
-                        alert('⚠️ ERROR\\n\\n{message.replace("'", "\\'")}');
-                        </script>
-                    """, height=0)
-                    # Reset and go back to browse
-                    st.session_state['preview_image'] = None
-                    st.session_state['image_confirmed'] = False
-                    if st.button("← Back to Browse"):
-                        st.rerun()
-            except Exception as e:
-                st.error(f"Error claiming image: {e}")
+                    st.error("Please provide a reason for reporting this image.")
+        
+        with col_b:
+            if st.button("Cancel Report", use_container_width=True):
+                st.session_state['show_report_bad'] = False
+                st.rerun()
     
-    with col2:
-        if st.button("❌ Cancel - Choose Different Image", use_container_width=True):
-            # Go back to browsing (filters preserved)
-            st.session_state['preview_image'] = None
-            st.session_state['image_confirmed'] = False
-            st.rerun()
+    else:
+        # Normal confirmation view
+        st.subheader("Are you sure you want to use this image?")
+        st.warning("⚠️ Once confirmed, this image will be reserved for your task and removed from the available pool.")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("✅ Yes, Confirm This Image", use_container_width=True):
+                # Reload data to check current status
+                try:
+                    _, full_df = get_available_images()
+                    success, message = claim_image(img_data['image_id'], task_id, project_id, full_df)
+                    
+                    if success:
+                        st.session_state['image_confirmed'] = True
+                        st.session_state['selected_image_url'] = img_data['image_url']
+                        st.rerun()
+                    else:
+                        # Image was claimed by someone else
+                        st.error(message)
+                        st.components.v1.html(f"""
+                            <script>
+                            alert('⚠️ ERROR\\n\\n{message.replace("'", "\\'")}');
+                            </script>
+                        """, height=0)
+                        # Reset and go back to browse
+                        st.session_state['preview_image'] = None
+                        st.session_state['image_confirmed'] = False
+                        if st.button("← Back to Browse"):
+                            st.rerun()
+                except Exception as e:
+                    st.error(f"Error claiming image: {e}")
+        
+        with col2:
+            if st.button("❌ Cancel - Choose Different Image", use_container_width=True):
+                # Go back to browsing (filters preserved)
+                st.session_state['preview_image'] = None
+                st.session_state['image_confirmed'] = False
+                st.rerun()
+        
+        with col3:
+            if st.button("🚨 Report Bad Image", use_container_width=True):
+                # Show report form
+                st.session_state['show_report_bad'] = True
+                st.rerun()
 
 # ========== FINAL CONFIRMATION PAGE (image claimed successfully) ==========
 elif st.session_state['image_confirmed'] and st.session_state['preview_image'] is not None:
@@ -398,6 +480,7 @@ else:
                             if st.button(f"👁️ Preview", key=f"preview_{img_data['image_id']}"):
                                 # Store image for preview
                                 st.session_state['preview_image'] = img_data.to_dict()
+                                st.session_state['show_report_bad'] = False
                                 st.rerun()
     
     except Exception as e:
